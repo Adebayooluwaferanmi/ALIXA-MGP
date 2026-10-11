@@ -6,11 +6,11 @@
 |---|---|---|---|
 | 0 — Foundation | 1–2 | PRD, architecture/ADR, threat model, OpenAPI/manifest contract, repository standards, CI skeleton and local dev plan | New team member runs contract checks; risks and budget owner identified |
 | 1A — Control plane | 3–4 | Auth/RBAC, projects, versions, PostgreSQL migrations, asset metadata, storage, signed URLs | Create project/version and securely upload/retrieve media |
-| 1B — Rendering UX | 5–6 | Template/manifest runner, durable queue, progress, preview, results and downloads | ALMS pilot renders both formats without app redeployment |
+| 1B — Rendering UX | 5–6 | Template/manifest runner, durable queue, progress, preview, results and downloads | Reference project renders both formats without app redeployment |
 | 2 — Capture Studio | 7–9 | Local tab capture, permission UX, screenshot/video, trimming/masking, asset-to-scene; remote isolated browser proof of concept | Authorized ALMS demo produces reusable asset; no live patient data |
 | 3 — Audio Studio | 10–12 | TTS adapters, voice profiles, approvals, music library, FFmpeg mix and QA | Fix one mispronounced word, regenerate one clip, rerender with audio |
 | 4 — Code-first Pro | 13–16 | Monaco source tree, sandboxed builds, pinned deps, bundle cache, code preview, quota enforcement | Editing custom source does not redeploy platform; isolation tests pass |
-| 5 — Harden + pilot | 17–18 | Security testing, recovery drills, load and cost benchmark, documentation and release candidate | Team-led ALMS complete production accepted |
+| 5 — Harden + pilot | 17–18 | Security testing, recovery drills, load and cost benchmark, documentation and release candidate | Team-led Complete reference production accepted |
 
 ## Deliverable definitions
 **MVP after 1B:** authenticated interface + versioned projects + media storage + manifest-driven trusted templates + render queue + previews + downloads. Not all audio or remote browser features are MVP.
