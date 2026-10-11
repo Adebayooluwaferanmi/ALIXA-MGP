@@ -1,86 +1,107 @@
-# ALIXA-MGP — Alixa Media Generation Platform
+# ALIXA-MGP | Media Generation Platform
 
-**Status:** Planning / foundation · **Owner:** ALIXA · **Started:** October 2026
+**A Linux-native, self-hostable environment for programmable media production.**
 
-ALIXA-MGP is a browser-based, code-first media production platform. It enables creators and teams to build, preview, narrate, capture, render, review, and deliver videos **without redeploying the platform every time creative content changes**.
+**Project stage:** Architectural definition · **Status:** Pre-implementation · **Project owner:** ALIXA
 
-> **Product boundary:** ALIXA-MGP is the media production platform. ALMS (Alixa Laboratory Management Software) is the first pilot customer/project, not the platform itself.
+## Purpose
 
-## Why it exists
-The ALMS promotional film required repeated editing of Remotion source, GitHub commits, Render deploys, authenticated PowerShell job submissions and manual downloads. MGP separates a **stable execution platform** from **versioned creative project source, manifests and assets**. Code changes to the platform still go through CI/CD; ordinary video revisions do not.
+Producing high-quality programmatic video requires more than a rendering engine. Creative teams need a unified environment for authoring compositions, acquiring visual media, producing audio, previewing output, controlling compute, and managing reproducible render jobs. In a code-driven production pipeline, these responsibilities are commonly distributed across separate tools and manual handoffs. This fragmentation makes iteration costly, assets difficult to govern, and production outcomes difficult to reproduce.
 
-## Product promise
-1. Create a project in the browser, choose a template or supply custom Remotion React/TypeScript code.
-2. Import project resources through direct upload, GitHub (pinned revision) or Google Drive (snapshot at import).
-3. Use an integrated Browser Capture Studio to record authorized website demos and screenshots directly into project assets.
-4. Edit and preview scenes, narration, music and composition settings.
-5. Validate and compile projects in isolated, resource-limited workers; cache reusable bundles.
-6. Queue final portrait/landscape renders and download or export results with provenance and QA details.
+**ALIXA-MGP** addresses this problem through an integrated media-production control plane and a secure Linux execution layer. It combines editable Remotion projects, browser capture, AI-assisted audio production, asset governance and queued video rendering behind a single web application.
 
-## Read first
-- [Product requirements and scope](docs/PRODUCT_REQUIREMENTS.md)
-- [Architecture and security boundaries](docs/ARCHITECTURE.md)
-- [Delivery roadmap and team expectations](docs/ROADMAP.md)
-- [UI/UX information architecture](docs/UI_UX_SPEC.md)
-- [Manifest contract and sample](docs/PROJECT_MANIFEST.md)
-- [Browser Capture Studio](docs/BROWSER_CAPTURE.md)
-- [Audio pipeline](docs/AUDIO_STUDIO.md)
-- [Resource and cost strategy](docs/RESOURCE_COSTS.md)
-- [Engineering and quality gates](docs/ENGINEERING.md)
-- [Architecture decisions](docs/decisions/ADR-0001-platform-boundaries.md)
-- [Contributor handbook](CONTRIBUTING.md)
+It is a **platform project**, not an ALMS-specific promotional-video tool. ALMS may serve as an acceptance-case project but neither its codebase nor its cloud account determines MGP's design or hosting.
 
-## Delivery phases
-| Phase | Target relative to kickoff | Exit criterion |
-|---|---|---|
-| 0 — Foundation | Weeks 1–2 | Architecture, schemas, CI, threat model, local stack and first-team onboarding |
-| 1 — Core studio | Weeks 3–6 | Create/import/edit project; managed assets; manifest-driven render, jobs and browser downloads, **no redeploy per video** |
-| 2 — Browser capture | Weeks 7–9 | Local-tab capture plus authorized remote-browser prototype and asset-to-scene |
-| 3 — Audio production | Weeks 10–12 | TTS adapter, voice approval, licensed music, timing, mixing and final A/V render |
-| 4 — Advanced code workflows | Weeks 13–16 | Isolated arbitrary-code builds, cache, version comparison, richer previews and cost controls |
-| 5 — Harden and pilot | Weeks 17–18 | Security, performance, recovery, documentation and ALMS pilot acceptance |
+## Intended outcomes
 
-These are **planning estimates**, not committed dates or staffing promises. Detailed dependencies, risks and acceptance gates are in [ROADMAP](docs/ROADMAP.md).
+- Author or import React/TypeScript Remotion compositions and render them without redeploying the Media Studio application for each creative revision.
+- Capture website screenshots and videos using permissioned local capture or isolated, interactive Chromium sessions; attach captured media directly to the project.
+- Organize immutable source revisions, assets, manifests, narration and soundtrack versions into reproducible productions.
+- Generate or import narration, manage licensed music, approve takes, align timelines, and create finished audiovisual exports.
+- Use scene previews and cached build artifacts to minimize repeated compute.
+- Operate on **Linux** using OCI containers, reproducible dependencies, controlled worker processes and provider-neutral infrastructure.
 
-## Architecture at a glance
+## Users
+
+Motion developers, media producers, designers, software teams producing product walkthroughs, reviewers, and platform administrators. The interface must support both code-first authoring and guided template editing.
+
+## Core subsystems
+
+| Subsystem | Responsibility |
+|---|---|
+| Project Studio | Projects, versions, storyboards, composition settings, approvals |
+| Code Studio | Monaco-based Remotion source editing, build diagnostics, reusable templates |
+| Asset Library | Ingestion, provenance, immutable assets, media transformations |
+| Browser Capture Studio | Authorized live browser interaction, screenshots and recordings |
+| Audio Studio | TTS adapters, approved voice profiles, music assets, mixing and timing |
+| Execution Plane | Sandboxed compilation, preview, render jobs, cost/quota controls |
+| Results Library | QA, previews, downloads, exports and history |
+
+## Linux-first architecture
+
 ```text
-Web Studio (Next.js + Monaco + Remotion Player)
-            | authenticated API
-Studio API / Postgres / Redis queue
-  |            |               |
-Asset service  Capture service  Build/render orchestration
-  |            |               |
-S3-compatible storage       Isolated build runner
-            |                    |
-            +-- Versioned bundle |
-                         Remotion renderer (existing Ordabase service as adapter)
-                                      |
-                              previews / MP4 / download
-Audio providers (TTS + music) -> FFmpeg mastering -> render assets
+Browser UI (Next.js / React / Monaco / Remotion Player)
+                         |
+            API + policy / PostgreSQL
+                         |
+               Durable job orchestration
+                         |
+        +----------------+------------------+
+        |                |                  |
+ Sandbox build      Capture worker      Audio worker
+ (Remotion bundle) (Chromium/Playwright) (TTS/FFmpeg)
+        |                |                  |
+        +----------------+------------------+
+                         |
+           Immutable object storage
+                         |
+            Isolated rendering worker
+                         |
+              QA / output delivery
 ```
 
-**Security:** User-supplied code must never run in the web/API process or in the privileged renderer without sandboxing. Validate network egress, resource limits, dependency allowlist, secret isolation and tenant boundaries. Never place patient data or login secrets in marketing assets.
+Deployment target: a Linux host, VM or Linux container environment. Cloud vendors are optional infrastructure providers, not product dependencies. Source repository hosting and media resource connectors are likewise replaceable integrations.
 
-## Repository layout (planned)
-```
-apps/web/             # Next.js Studio UI
-apps/api/             # API / orchestration
-packages/contracts/   # manifest, API schemas, events
-packages/templates/   # trusted Remotion compositions
-workers/build/        # isolated compile/bundle
-workers/render/       # preview and final video
-workers/capture/      # controlled Chromium sessions
-workers/audio/        # speech/music adapters, mastering
-infra/                # compose, Render Blueprints, policies
-docs/                 # product and engineering decisions
-```
-**No production services have been provisioned by this repository initialization.** See [ENGINEERING](docs/ENGINEERING.md) before building or deploying.
+## Documentation map
 
-## Governance
-Use GitHub Issues for work items and Pull Requests for reviewed implementation. Issues should have scope, dependencies, acceptance criteria, tests, risks and definition of done. Avoid merging untested builds. Record significant trade-offs as ADRs. Roles and review expectations are described in [CONTRIBUTING](CONTRIBUTING.md).
+Start here, in order:
 
-## Success metric
-An ALMS marketing producer can create a video project, import/capture assets, revise a scene or narration, preview, render both orientations, review and download outputs **without Git commits, manual API calls or Render redeployments**.
+1. [Problem definition and product requirements](docs/PRODUCT_REQUIREMENTS.md)
+2. [System architecture](docs/ARCHITECTURE.md)
+3. [Delivery roadmap and release gates](docs/ROADMAP.md)
+4. [Experience and interface specification](docs/UI_UX_SPEC.md)
+5. [Project manifest contract](docs/PROJECT_MANIFEST.md)
+6. [Browser Capture subsystem](docs/BROWSER_CAPTURE.md)
+7. [Audio subsystem](docs/AUDIO_STUDIO.md)
+8. [Resource budgets and capacity strategy](docs/RESOURCE_COSTS.md)
+9. [Engineering standards](docs/ENGINEERING.md)
+10. [Team onboarding](docs/TEAM_ONBOARDING.md)
+11. [Delivery tracker](docs/DELIVERY_TRACKER.md)
+12. [Architecture decision register](docs/decisions/ADR-0001-platform-boundaries.md)
 
-## License
-No open-source license is granted yet. Repository visibility is public; treat documentation as public and do not commit tokens, customer data, unlicensed media or private recordings. Licensing must be decided explicitly before distributing production code.
+## Delivery plan
+
+| Release | Target* | Demonstrable capability |
+|---|---|---|
+| Foundation | Weeks 1–2 | Contracts, threat model, Linux dev stack and CI |
+| Core studio | Weeks 3–6 | Projects, assets, trusted compositions, jobs, preview and downloads |
+| Capture | Weeks 7–9 | Local tab capture and protected remote Chromium prototype |
+| Audio | Weeks 10–12 | Voice approval, music asset management and mixed render |
+| Custom-code execution | Weeks 13–16 | Sandboxed source builds, bundle caching and controlled execution |
+| Pilot / hardening | Weeks 17–18 | Security and recovery checks, measured budgets and acceptance tests |
+
+*Relative planning targets from team kickoff; not committed dates. Detailed entry/exit gates: [roadmap](docs/ROADMAP.md).
+
+## Success criteria
+
+A producer must be able to create a project, modify a composition or its input data, capture/import assets, preview scenes, generate/approve audio, submit a final render, and retrieve the result **without a platform deployment for a content revision**. Platform code changes continue to use reviewed software release processes.
+
+All execution must be bounded, observable and secure. Any code supplied through the Studio is potentially executable and must be handled as untrusted until explicitly admitted under an isolation policy.
+
+## Development status
+
+This repository currently establishes the product and engineering specification and tracks delivery through GitHub Issues. It **does not yet contain a functioning application**. The [contributor guide](CONTRIBUTING.md) describes team expectations. No hosting provider or new infrastructure service is required by this documentation milestone.
+
+## Licensing
+
+Licensing has not been determined. The repository is public; contributors must not commit credentials, private captured sessions, unlicensed media or patient data.

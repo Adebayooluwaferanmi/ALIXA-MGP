@@ -1,25 +1,43 @@
-# Resource strategy and cost controls
+# Linux resource and capacity engineering strategy
 
-## Baseline
-Existing Ordabase `alms-video-renderer` is a paid Render Docker service with 2 vCPU, 4 GB RAM and attached disk. Do **not** repurpose its privileged process to execute arbitrary source; preserve it as a legacy/trusted adapter during migration. Reuse its capacity only after benchmarking.
+## Objective
 
-## Defaults (proposals, not observed limits)
-- Max full render concurrency: 1 on current worker.
-- Default preview: one frame or <=10 sec low-resolution clip; no automatic full render on every keystroke.
-- Browser sessions: one active remote session, ~10-minute idle timeout, max recording duration configurable.
-- Code builds: content-hash caching; limited CPU, RAM, wall-clock, IO, PID and egress, isolated execution.
-- TTS: cache audio by script/voice/model hash, only regenerate changed clips.
-- Media: thumbnails and proxy previews; originals and final versions on S3-compatible storage with retention.
-- Exports: signed short-lived download URLs and lifecycle expiration; no unnecessary file duplication.
+Provide predictable compute and storage consumption across compilation, browser capture, audio generation and video rendering. Prefer reuse and on-demand execution; never weaken code isolation to save money.
 
-## Scheduling
-Priority queues: interactive frame preview > short scene preview > full render > batch export. Admission control rejects jobs over quota. Fair-use/workspace budgets and manual approval thresholds. No guaranteed dollar estimate until measured compute seconds, storage, egress and model costs are available.
+## Deployment baseline
 
-## Metrics
-Record queue delay, compile time, worker CPU-seconds, peak RSS, render time by resolution, browser minutes, audio/model inference duration, byte growth and egress, failed/retried jobs and cache hits. Dashboard aggregates per project and workspace.
+ALIXA-MGP targets Linux on a VM, bare-metal host, or OCI-compatible container host. No external hosting account or current marketing renderer is a runtime prerequisite. Capacity values must come from benchmarks on a declared reference machine, not from a provider's marketing plan.
 
-## Cost gates
-Phase 0: document starting cloud bill and max allowable new spend. Phase 1: benchmark existing renderer. Phase 2+: only create new always-on resources when validated against workload; prefer on-demand isolated runner for code or remote browser if feasible. GPU audio host optional, independently approved. Infrastructure Blueprints are reviewed before deploy; no surprise paid service creation.
+## Resource profile by workload
 
-## Risks
-Render persistent disks are per-service and not shared between services; use object storage for interchange. Long-running Chromium can compete with Remotion for memory. Untrusted code isolation must not be weakened to save money. Test queue recovery and cleanup so interrupted jobs don't leak storage.
+| Workload | Typical approach | Controls |
+|---|---|---|
+| Code editing | Browser-side Monaco | Client resources; debounced diagnostics |
+| Build | Ephemeral sandboxed Linux worker | CPU, RSS, PID, disk, timeout; content-hash cache |
+| Frame preview | Single-frame render | Cache thumbnails; preemptive priority |
+| Scene preview | Low-resolution, limited duration | Quality preset, cancellation, concurrency |
+| Final render | Dedicated Remotion worker | Concurrent-job cap, frame batching, retry |
+| Browser capture | Local MediaRecorder first; isolated remote Chromium when needed | One-session initial cap, idle timeout, egress |
+| Narration | Licensed TTS adapter | Per-clip caching; infer-on-demand |
+| Music | Licensed track library first | Optional GPU generation by approved policy |
+| Storage | S3-compatible object storage | Deduplication, quota, lifecycle retention |
+
+## Scheduler principles
+
+Admission checks budgets before accepting work; prioritize interactive previews, then approved final renders and batch exports subject to fairness. Job attempts use leases and heartbeats. Workers terminate on cancellation/timeouts. Cache keys include source+lockfile+runtime+engine+input fingerprints. Asset transformations and audio generation are cached separately.
+
+## Linux enforcement
+
+Prefer cgroups v2 for CPU/memory/PID limits, Linux namespaces/seccomp via managed OCI sandbox, read-only roots, non-root processes and no Docker socket. Running arbitrary user code requires independently reviewed isolation; ordinary application Docker containers alone are insufficient for unknown adversarial source. Browser egress must deny private/metadata networks.
+
+## Cost telemetry
+
+Persist CPU-seconds, peak memory, source-build seconds, rendered frames, output bytes, storage residency, egress, remote-browser minutes and audio inference seconds. Show usage per workspace and enforce quotas. Display currency estimates only when actual compute pricing is configured.
+
+## Benchmark and release gate
+
+Establish reference machine specification; measure single-frame, 10-second scene and 90-second dual-format rendering, concurrent build isolation, browser memory, voice latency and recovery. Approve worker sizes/concurrency based on observed 95th-percentile latency, failure rate and cost ceilings. Autoscaling is optional, not assumed.
+
+## Failure containment
+
+Guard against runaway Chromium processes, fork bombs, oversized inputs, long TTS clips, abandoned intermediate files and failed multi-GB outputs. Use retention and orphan cleanup. Shared object storage is preferable to multi-container filesystem sharing.

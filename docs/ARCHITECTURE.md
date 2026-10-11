@@ -45,8 +45,8 @@ Workspace, Membership, Project, ProjectVersion, SourceSnapshot, Asset, AssetVers
 ## Key security controls
 **Custom JavaScript is arbitrary code.** No shared Node process, unguarded child_process, privileged mounted host disk or shared credentials. Ephemeral container/microVM ideally no root, no Docker socket, read-only root, seccomp, PID/memory/CPU/time quotas, constrained outbound network and per-job workspace. Runtime supply-chain pinning and package allowlist; isolate Chromium from metadata/private IPs (SSRF/DNS rebinding protections). No cross-tenant cookies. Local tab capture requires browser permission. redact PHI before sharing or publishing. Never auto-voice-clone someone without consent.
 
-## Integration with existing Ordabase renderer
-Current `alms-video-renderer` uses one active in-memory job, hard-coded composition IDs and fixed 90s validation. Treat it as a migration **adapter only**, not a general untrusted code executor. Add manifest-aware rendering in a separate service or isolated job runner; retain existing service and credentials until migration passes regression. Existing paid resources are not automatically duplicated.
+## Linux-native media execution boundary
+Remotion is the initial composition/render engine, behind an engine adapter. Versioned TSX sources and manifests are built under explicit Linux process isolation and rendered by bounded workers. Existing demonstration compositions are optional regression fixtures, not production or infrastructure dependencies.
 
 ## Data retention/recovery
 Object lifecycle policies for temporary frame files and abandoned bundles; configurable outputs retention. Back up Postgres, pin object-store revisions, periodically test recovery and failed-render cleanup. No storage provider assumed until budget/availability approval.
